@@ -3,6 +3,8 @@
 ## 📜 The Origin Story
 This repository began with a single question I posed to **Gemini**: *"Is this even possible?"*
 
+> 📖 **[Read the full conversation →](conversation.md)** — The complete transcript that sparked this architecture.
+
 <img width="454" height="495" alt="image" src="https://github.com/user-attachments/assets/ae19f03c-941e-4cf5-b739-8ba9257c8bb8" />
 
 *is this even possible? i assume many of the agent repos on github do something like this or do they?*

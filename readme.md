@@ -11,6 +11,8 @@ This repository began with a single question I posed to **Gemini**: *"Is this ev
 
 --------
 
+I was asking the question because I was realizing while building <a href="https://tellavision.ai" target="_blank">tellavision.ai</a> that I was having to build so many API endpoints but that would itself create a brittle architecture. Then it came to me I could potentially build a self-evolving machine as I have already observed looking some of the AI repos on github and using <a href="https://github.com/agent0ai/agent-zero" target="_blank">Agent Zero</a>. 
+
 I had a vision of a system that functioned less like a chatbot and more like a self-assembling military hierarchy—a microservice architecture where specialized units perform tasks, and a front-end UI self-assembles in real-time based on the user's intent. 
 
 As we went deeper, we realized that the "organic" model of AI—where you throw a swarm of agents into a room and hope they collaborate—is fundamentally flawed. It is prone to [semantic drift](#semantic-drift), infinite loops, and massive resource waste. To solve this, we moved toward **Hierarchy**. This repo is the blueprint for that transition: from chaotic AI swarms to a governed, **Agentic Nation-State**.

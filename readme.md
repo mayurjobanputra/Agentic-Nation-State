@@ -78,8 +78,8 @@ The bedrock of the entire system. Instead of "prompts," we have **Standard Opera
 * **The General (Orchestrator):** The high-level strategist that interfaces with me. It translates my "Meta-Task" into a visual **Mermaid Battle Plan**. It doesn't do the work; it directs the flow.
 * **The Auditor (The Judge):** My most critical addition. The Auditor is a separate, high-reasoning entity that scans the work of all other agents. Nothing reaches the user without the Auditor's digital signature of approval. It provides the "Go/No-Go" gate for the entire assembly line.
 
-### 3. Specialized Cities (Dockerized Isolation)
-I don't believe in a single, multi-capable brain. I believe in specialized **Industrial Domains** housed in isolated Docker containers.
+### 3. Specialized Cities (Isolated Domains)
+I don't believe in a single, multi-capable brain. I believe in specialized **Industrial Domains** housed in isolated environments (containers, VMs, sandboxes—whatever isolation mechanism fits your stack).
 * **Domain Isolation:** We have a "Video City," an "Image City," and a "Text City." 
 * **The Tools:** These cities contain specific microservices (PDF converters, FFmpeg scripts, etc.) that the agents use as "Skills."
 * **Self-Assembly:** If a City lacks a tool, it triggers a **Developer Agent** to write a new microservice. This new "part" is tested in a **Quarantine Zone** before being added to the National Library.
@@ -108,7 +108,7 @@ As the system grows, you'll have 50+ microservices. How does a brand-new "Self-A
 ### The Janitor Agent (Garbage Collection)
 If your system is constantly "self-assembling," spinning up agents, and generating state updates, it creates digital clutter at an alarming rate.
 
-**The Problem (Ghost in the Machine):** What happens if a "Soldier" agent gets a ticket, goes into a Docker machine to process a video, and then the server blips? That agent is now "Zombified." It's holding a ticket, consuming memory/money, but it's not reporting to the Auditor anymore.
+**The Problem (Ghost in the Machine):** What happens if a "Soldier" agent gets a ticket, goes into an isolated environment to process a video, and then the server blips? That agent is now "Zombified." It's holding a ticket, consuming memory/money, but it's not reporting to the Auditor anymore.
 
 **The Role:** The Janitor runs a **Heartbeat Monitor**. It constantly pings every part of the factory to ask, "Are you still alive and useful?" If not, the zombie is summarily executed to save resources. It also manages the "Flight Recorder," archiving old states and cleaning up orphaned data.
 
@@ -122,7 +122,7 @@ This is the most subtle gap.
 ### The Load Balancer Agent (Logistics)
 In a military, you don't just send tanks; you have to send fuel.
 
-**The Problem:** If the "Video Maker" is running a massive task, it needs a way to signal to the Auditor: "I am at 90% capacity, do not send me more orders." If the user asks for five videos at once, who decides which Docker machine gets the priority?
+**The Problem:** If the "Video Maker" is running a massive task, it needs a way to signal to the Auditor: "I am at 90% capacity, do not send me more orders." If the user asks for five videos at once, who decides which compute instance gets the priority?
 
 **The Role:** The Load Balancer manages the hardware resources. It ensures the "Soldiers" don't starve and that high-priority tasks (flagged by the user) get the compute they need first.
 
@@ -155,7 +155,7 @@ To solve the "Money Pit" problem, I've introduced an internal **Resource Economy
 
 In a system that "self-assembles," you can't just pull a plug, because the system might have already replicated its logic elsewhere. We need a **Three-Tiered Kill Switch**:
 
-1.  **The Local Brake (The Sandbox):** The Auditor can freeze a specific Docker machine. The "Video City" goes into lockdown, but the "Text City" keeps working.
+1.  **The Local Brake (The Sandbox):** The Auditor can freeze a specific isolated environment. The "Video City" goes into lockdown, but the "Text City" keeps working.
 2.  **The Financial Freeze (The Wallet):** Since agents need "fuel" (API tokens/credits), this kill switch cuts the funding. The agents are still "alive," but they can't think or move. They are paralyzed.
 3.  **The Poison Pill (The Logic Kill):** A high-priority signal broadcast to the Ticket System that says: "All current goals are void. Revert to 'Dormant' state immediately." This is the "Nuclear Option."
 

@@ -978,6 +978,174 @@ Agents can earn bonus credits by:
 
 ---
 
+## The Merge Protocol: Parallel Agents, Single State
+
+**The Problem:** When multiple agents work in parallel on a single Meta-Task (e.g., "Translate this video to French and upload to YouTube"), they may all want to commit changes to the same state. Without coordination, this creates merge conflicts, lost work, and inconsistent state.
+
+**The Insight:** Every change happens on "main" — no branches. Agents propose changes, but don't execute them until they have exclusive access. And critically: when an agent reaches the front of the queue, they see not just "something changed" but the **exact delta** of what changed since they started working.
+
+### The Propose-Then-Commit Pattern
+
+Instead of agents directly modifying state, they follow a two-phase protocol:
+
+```mermaid
+sequenceDiagram
+    participant A as Agent
+    participant DA as Domain Auditor
+    participant SQ as State Sequencer
+    participant M as Main State
+    
+    A->>A: Work on task locally
+    A->>DA: Propose change with intent description
+    DA->>DA: Quality validation - static analysis, safety
+    DA-->>A: Quality pre-approved
+    
+    A->>SQ: Request merge slot
+    Note over SQ: Agent enters queue, waits turn
+    
+    SQ->>A: Your turn - here is current state + delta since you started
+    A->>A: Review delta, adapt proposal if needed
+    A->>SQ: Re-describe change against current state
+    SQ->>SQ: Conflict detection
+    
+    alt No conflict
+        SQ->>A: Merge approved - execute now
+        A->>M: Apply change atomically
+        M-->>SQ: Commit confirmed
+        SQ-->>A: Release slot
+    else Conflict detected
+        SQ-->>A: Conflict - re-work needed with delta context
+        A->>A: Adjust proposal using delta
+        Note over A: Retry or escalate
+    end
+```
+
+### Why "Describe Twice"?
+
+The agent describes its intended change when it **starts** working and again when it **reaches the front of the queue**. Why?
+
+1. **Stale Context Detection:** The first description was based on state v104. By the time the agent reaches the queue front, state might be v108. The second description forces the agent to reason against *current* reality.
+
+2. **Semantic Conflict Catching:** File-level conflicts are easy to detect. But what if Agent A changed a function's return type and Agent B is calling that function? Re-describing catches semantic conflicts that Git-style merge wouldn't see.
+
+3. **Intelligent Adaptation:** When the agent sees the delta of what changed, it can often **adapt** its proposal without re-doing all the work. "Oh, someone already added the error handling I was going to add — I can skip that part."
+
+### The Delta: What Changed Since I Started
+
+When an agent reaches the front of the queue, the State Sequencer provides:
+
+```yaml
+merge_context:
+  started_at_version: 104
+  current_version: 108
+  delta:
+    - version: 105
+      agent: translator_agent_3
+      summary: "Added French subtitle track to video asset"
+      files_touched: [assets/video_fr.srt]
+    - version: 106
+      agent: encoder_agent_1
+      summary: "Re-encoded video to H.264 format"
+      files_touched: [assets/output.mp4]
+    - version: 107
+      agent: metadata_agent_2
+      summary: "Updated video metadata with French language tag"
+      files_touched: [config/video_meta.json]
+    - version: 108
+      agent: uploader_agent_1
+      summary: "Staged video for YouTube upload"
+      files_touched: [queue/youtube_pending.json]
+```
+
+**The Agent's Options:**
+1. **Proceed (Fast Path):** Delta is empty or doesn't touch my files → commit immediately, no re-coding needed
+2. **Proceed (Review):** Delta exists but doesn't conflict → verify and commit as planned
+3. **Adapt:** "Version 106 changed the video format. I need to adjust my thumbnail extraction to use the new codec."
+4. **Abort:** "Version 108 already staged for upload — my upload preparation is now redundant. Canceling."
+5. **Escalate:** "I can't determine if my change conflicts with version 107. Requesting Auditor review."
+
+### The Fast Path: Zero-Delta Commits
+
+The most common case is the happy path: an agent works on files that no other agent touched during that time.
+
+```yaml
+merge_context:
+  started_at_version: 104
+  current_version: 104
+  delta: []  # Empty - nothing changed
+  
+  # OR
+  
+  started_at_version: 104
+  current_version: 108
+  delta:
+    - files_touched: [audio/mixer.py, audio/effects.py]
+    - files_touched: [config/settings.json]
+  agent_files: [video/encoder.py]  # Disjoint from delta
+  conflict_assessment: NONE
+```
+
+**When delta is zero or disjoint from the agent's changes:**
+- No re-coding required
+- No re-description required
+- Agent commits immediately when reaching queue front
+- The "describe twice" step becomes a simple verification, not a full re-analysis
+
+This is critical for efficiency. Most parallel work is genuinely independent — agents shouldn't pay a re-work penalty when there's no conflict.
+
+### Separating Quality Auditing from Merge Sequencing
+
+**Critical architectural point:** The Domain Auditor and the State Sequencer are different roles.
+
+| Role | Responsibility | When It Acts |
+|------|----------------|--------------|
+| **Domain Auditor** | Is this change *good*? (Quality, safety, compliance) | Before agent enters queue |
+| **State Sequencer** | Can this change *merge*? (Conflicts, consistency) | When agent reaches queue front |
+
+This separation prevents the Auditor from becoming a bottleneck. Quality validation happens in parallel across all working agents. Only the final merge step is serialized.
+
+### Handling Non-Conflicting Parallel Changes
+
+Not all parallel work conflicts. If Agent A modifies `video/encoder.py` and Agent B modifies `audio/mixer.py`, they can commit simultaneously.
+
+**Conflict Detection Levels:**
+
+| Level | What It Checks | Action |
+|-------|----------------|--------|
+| **File-Level** | Same file modified by both agents | Serialize |
+| **Semantic** | Different files, but logical dependency | Serialize + notify |
+| **Independent** | Completely disjoint changes | Parallel commit allowed |
+
+The State Sequencer maintains a **dependency graph** of state components. If two changes are provably independent, they can commit in parallel.
+
+### Starvation Prevention: Priority Aging
+
+**The Risk:** Agent A has a large refactor touching 20 files. Every time it reaches the queue front, small changes from other agents have invalidated its proposal. A keeps getting bounced.
+
+**The Solution:** Priority aging. The longer a proposal waits, the higher its effective priority.
+
+```yaml
+proposal:
+  agent: refactor_agent_1
+  initial_priority: NORMAL
+  queue_entry_time: 2025-01-04T10:00:00Z
+  current_time: 2025-01-04T10:15:00Z
+  wait_duration_minutes: 15
+  priority_boost: +2 (1 per 5 minutes waiting)
+  effective_priority: HIGH
+```
+
+After sufficient waiting, the agent gets priority protection — other agents must wait for it to complete before committing.
+
+### Open Questions: Merge Protocol
+
+- Should we support "merge previews" where agents can see probable conflicts before entering queue?
+- How do we handle agents that repeatedly fail to merge? (Stuck in conflict loop)
+- Can agents "reserve" merge slots in advance for time-sensitive work?
+- What's the right granularity for conflict detection? (File? Function? Line?)
+
+---
+
 # 🤔 Open Questions
 
 > These are questions we don't have confident answers to yet. They represent genuine design tensions and areas where community input would be valuable.
